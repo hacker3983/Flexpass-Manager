@@ -61,7 +61,7 @@ Navigate through the menu by typing the corresponding number and pressing Enter.
 * Each password is encrypted with AES-CBC using:
     * AES key derived from master password + vault salt
     * Random IV generated per password
-* IV and ciphertext are stored together in `creds.json`
+* IV (Initialization Vector) is stored in `creds.json`
 * Salt and KDF parameters are stored in plaintext (they are configuration, not secrets)
 
 # Contributing
