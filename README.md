@@ -1,6 +1,7 @@
 # Flexpass Manager
-**Flexpass Manager** is a secure, modular Python CLI password manager. It allows users to safely store, encrypt, and retrieve credentials locally. All sensitive data is encrypted using AES with keys derived from a master password via Argon2.
+**Flexpass Manager** is a secure and extensible password manager written in Python. It enables users to encrypt, store, and manage credentials locally using strong cryptographic primitives. Encryption keys are derived from a master password using Argon2 and used with AES for secure data storage.
 
+The project currently features a command-line interface, with plans to expand into a graphical user interface in future versions.
 ---
 
 ## Features
