@@ -1,4 +1,2 @@
 argon2-cffi
-AES-Python
-numpy
-galois
+pycryptodome
