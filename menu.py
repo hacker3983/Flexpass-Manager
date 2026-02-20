@@ -27,7 +27,7 @@ banner = f"""{yellow}
 
 class Menu:
     def __init__(self):
-        self.version = 0.1
+        self.version = 0.2
         self.auth = Auth()
         self.manager = Manager(self.auth.username, self.auth.master_password)
         self.quit = False
