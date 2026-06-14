@@ -30,6 +30,32 @@ class Manager:
                 type=Type.ID
         )
 
+    def decrypt_credentials(self):
+        platforms = self.get_platforms()
+        if not platforms:
+            return
+        for platform in platforms:
+            platform_name = platform
+            my_platform = platforms[platform_name]
+            for credential in my_platform:
+                credential_name = credential
+                encrypted_data = my_platform[credential_name]
+                my_platform[credential_name] = self.decrypt_credential(encrypted_data)
+
+    def encrypt_credentials(self):
+        platforms = self.get_platforms()
+        if not platforms:
+            return
+        for platform in platforms:
+            platform_name = platform
+            my_platform = platforms[platform_name]
+            for credential in my_platform:
+                credential_name = credential
+                decrypted_data = my_platform[credential_name]
+                encrypted_data = self.encrypt_credential(decrypted_data)
+                my_platform[credential_name] = encrypted_data
+        self.write_data()
+
     def encrypt_credential(self, credential):
         salt = os.urandom(16)
         aes_key = self.derive_aeskey(salt)
@@ -104,6 +130,18 @@ class Manager:
         self.write_data()
         return platform
 
+    def remove_platform(self, platform_id):
+        user = self.get_user()
+        if not user:
+            return False
+        platforms = self.get_platforms()
+        for i, platform_name in enumerate(platforms):
+            if i == platform_id:
+                del platforms[platform_name]
+                self.write_data()
+                return True
+        return True
+
     def remove_credential(self, platform_name, credential_id):
         user = self.get_user()
         if not user:
@@ -132,7 +170,19 @@ class Manager:
                 return decrypted_data
 
         return None
-    
+
+    def change_username(self, new_username):
+        users = self.get_users()
+        if self.username in users:
+            users[new_username] = users.pop(self.username)
+            self.write_data()
+        self.username = new_username
+
+    def remove_user(self):
+        users = self.get_users()
+        users.pop(self.username)
+        self.write_data()
+
     def load_info(self):
         if not os.path.isfile("creds.json"):
             return False

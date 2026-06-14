@@ -28,10 +28,56 @@ class Auth():
             if master_password != getpass.getpass("Please confirm your master password: "):
                 print("Passwords do not match. Please try again...")
                 continue
-            self.add_user(username, master_password)
+            result = self.add_user(username, master_password)
+            if result:
+                self.write_data()
+                print(f"Successfully created the user {username}!")
+            else:
+                print(f"The username {username} already exists!")
+                print("Please try again...")
+            break
+
+    def change_username(self):
+        password = getpass.getpass("Please confirm your password: ") 
+        users = self.auth_info["Users"]
+        while True:
+            new_username = input("Please enter the new username: ")
+            if new_username in users:
+                print("The username already exists. Please choose a different one!")
+                continue
+            if input("Confirm the username: ") == new_username:
+                break
+            print("Please try again...")
+        kdf_hash = users[self.username]
+        if self.verify_password(kdf_hash, password):
+            users[new_username] = users.pop(self.username)
+            self.username = new_username
             self.write_data()
-            break 
- 
+            print(f"Successfully changed username to {new_username}!")
+            return True
+        print("The password is incorrect please try again...")
+        return False
+
+    def remove_user(self):
+        password = getpass.getpass("Please confirm your password: ")
+        users = self.auth_info["Users"]
+        kdf_hash = users[self.username]
+        if self.verify_password(kdf_hash, password):
+            users.pop(self.username)
+            self.write_data()
+            print(f"Successfully deleted the account {self.username}!")
+            return True
+        print("The password is incorrect please try again...")
+        return False
+
+    def change_password(self, password, new_password):
+        users = self.auth_info["Users"]
+        kdf_hash = users[self.username]
+        if self.verify_password(kdf_hash, password):
+            new_passwordhash = self.hasher.hash(new_password)
+            users[self.username] = new_passwordhash
+            self.write_data()
+
     def add_user(self, username, master_password):
         users = self.auth_info["Users"]
         if username in users:
@@ -47,6 +93,9 @@ class Auth():
             verified = False
         return verified
 
+    def relogin(self):
+        self.logged_in = True
+
     def login(self):
         attempts = 3
         users = self.auth_info["Users"]
@@ -54,10 +103,10 @@ class Auth():
         verified = False
         while attempts: 
             username = input("Please enter your username: ")
+            master_password = getpass.getpass("Please enter your master password: ")
             if username in users:
                 kdf_hash = users[username]
-            master_password = getpass.getpass("Please enter your master password: ")
-            verified = self.verify_password(kdf_hash, master_password)
+                verified = self.verify_password(kdf_hash, master_password)
             if verified:
                 print("You have been authorized successfully!")
                 self.username = username
@@ -86,8 +135,9 @@ class Auth():
             f.write('\t"Users":{\n')
             for index, user in enumerate(users):
                 username = user
+                encoded_username = json.encoder.encode_basestring(username)
                 kdf_hash = users[username]
-                f.write(f'\t\t"{username}": "{kdf_hash}"')
+                f.write(f'\t\t{encoded_username}: "{kdf_hash}"')
                 if index != user_count-1:
                     f.write(",\n")
             f.write('\n\t}\n')

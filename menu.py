@@ -36,6 +36,10 @@ class Menu:
                 "View Credentials",
                 "Delete Credentials",
                 "Switch Account",
+                "Remove Account",
+                "Change Username",
+                "Remove platform",
+                "Change master password",
                 "Logout"
         ]
 
@@ -80,6 +84,48 @@ class Menu:
             self.quit = True
         else:
             print("The option that you gave is invalid please try again!")
+    
+    def change_username(self):
+        success = self.auth.change_username()
+        if success:
+            self.manager.change_username(self.auth.username)
+
+    def remove_account(self):
+        success = self.auth.remove_user()
+        if success:
+            self.manager.remove_user()
+            self.logout()
+        return success
+
+    def remove_platform(self):
+        platforms = self.manager.get_platforms()
+        if not platforms:
+            print("There is no platforms for the current user...")
+            return
+        platform_count = len(platforms)
+        while True:
+            if not platforms:
+                break
+            self.print_platforms()
+            print("Type back to go back to the main menu...")
+            platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
+            if platform_id == "back":
+                break
+            try:
+                platform_id = int(platform_id) - 1
+            except:
+                print("The platform id provided is invalid...")
+                print("Please try again...")
+                continue
+            if platform_id >= platform_count or platform_id < 0:
+                print("The platform id provided is invalid...")
+                print("Please try again..")
+                continue
+            if self.manager.remove_platform(platform_id):
+                print("Succesfully removed the platform!")
+            else:
+                print("The platform id you gave is invalid.")
+                print("Please try again...")
 
     def logout(self):
         self.auth.logged_in = False
@@ -102,18 +148,55 @@ class Menu:
                 print("The option you entered is invalid please try again...")
                 continue
             if option == 1:
-                print(self.add_credential())
+                self.add_credential()
             elif option == 2:
                 self.view_credentials()
             elif option == 3:
                 self.delete_credentials()
             elif option == 4:
-                self.logout()
-                self.auth.login()
-                print(f"{bold}{white}Successfully switched into account!")
+                self.switch_account()
             elif option == 5:
+                self.remove_account()
+                break
+            elif option == 6:
+                self.change_username()
+            elif option == 7:
+                self.remove_platform()
+            elif option == 8:
+                self.change_master_password()
+            elif option == 9:
                 self.logout()
                 break
+
+    def change_master_password(self):
+        password = getpass.getpass("Please confirm your password: ")
+        while True:
+            new_password = getpass.getpass("Please enter the new password: ")
+            if new_password == getpass.getpass("Confirm the password: "):
+                break
+            print("Please try again...")
+        users = self.auth.auth_info["Users"]
+        kdf_hash = users[self.auth.username]
+        if self.auth.verify_password(kdf_hash, password):
+            self.auth.change_password(password, new_password)
+            self.manager.decrypt_credentials()
+            self.manager.master_password = new_password
+            self.manager.encrypt_credentials()
+            print("Successfully changed the password!")
+        else:
+            print("The password is incorrect...")
+            print("Please try again...")
+
+    def switch_account(self):
+        self.logout()
+        logged_in = self.auth.login()
+        if logged_in:
+            self.manager.username = self.auth.username
+            print(f"{bold}{white}Successfully switched into account!")
+        else:
+            print(f"{bold}{white}Failed to switch into the account...")
+            self.auth.relogin()
+
 
     def ask_credential(self):
         print("Please provide your credential details below...")
@@ -126,10 +209,9 @@ class Menu:
                 break
             print("The platform name you have provided does not match...")
             print("Please try again...")
-
         while True:
             username = input("Enter the username: ")
-            if input("Confirm you username: ") == username:
+            if input("Confirm your username: ") == username:
                 break
             print("The username you entered does not match...")
             print("Please try again...")
@@ -182,7 +264,6 @@ class Menu:
                 print("The platform id provided is invalid...")
                 print("Please try again..")
                 continue
-            print(platform_id)
             platform_name = self.manager.get_platform_name(platform_id)
             credentials = list(self.manager.get_platform(platform_name))
             credential_count = len(credentials)
@@ -235,6 +316,9 @@ class Menu:
             credential_count = len(credentials)
             while True:
                 self.print_credentials(platform_name)
+                if not credential_count:
+                    print(f"{red}There is no credentials in the selected platform...")
+                    break
                 print("Type back to go back to platform selection")
                 credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
                 if credential_id == "back":
