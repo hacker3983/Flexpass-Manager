@@ -1,5 +1,6 @@
 from auth import Auth
 from manager import Manager
+from enum import IntEnum
 import getpass
 
 white = "\033[38;2;255;255;255m"
@@ -25,29 +26,53 @@ banner = f"""{yellow}
 ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝  
 {reset}"""
 
+platform_offset = 0
+platform_limit = 10
+
+credential_offset = 0
+credential_limit = 10
+
+class StartupOption(IntEnum):
+    CREATE_ACCOUNT = 1
+    LOGIN = 2,
+    EXIT = 3
+
+class VaultOption(IntEnum):
+    ADD_CREDENTIAL = 1
+    VIEW_CREDENTIALS = 2
+    DELETE_CREDENTIALS = 3
+    SWITCH_ACCOUNT = 4
+    ADD_PLATFORM = 5
+    REMOVE_ACCOUNT = 6
+    CHANGE_USERNAME = 7
+    REMOVE_PLATFORM = 8
+    CHANGE_PASSWORD = 9
+    LOGOUT = 10
+
 class Menu:
     def __init__(self):
         self.version = 0.2
         self.auth = Auth()
         self.manager = Manager(self.auth.username, self.auth.master_password)
         self.quit = False
-        self.vault_options = [
-                "Add a Credential",
-                "View Credentials",
-                "Delete Credentials",
-                "Switch Account",
-                "Remove Account",
-                "Change Username",
-                "Remove platform",
-                "Change master password",
-                "Logout"
-        ]
+        self.vault_options = {
+                VaultOption.ADD_CREDENTIAL: "Add a Credential",
+                VaultOption.VIEW_CREDENTIALS: "View Credentials",
+                VaultOption.DELETE_CREDENTIALS: "Delete Credentials",
+                VaultOption.SWITCH_ACCOUNT: "Switch Account",
+                VaultOption.REMOVE_ACCOUNT: "Remove Account",
+                VaultOption.CHANGE_USERNAME: "Change Username",
+                VaultOption.REMOVE_PLATFORM: "Remove platform",
+                VaultOption.CHANGE_PASSWORD: "Change master password",
+                VaultOption.LOGOUT: "Logout",
+                VaultOption.ADD_PLATFORM: "Add platform"
+        }
 
-        self.startup_options = [
-                "Create Account",
-                "Login",
-                "Exit"
-        ]
+        self.startup_options = {
+                StartupOption.CREATE_ACCOUNT: "Create Account",
+                StartupOption.LOGIN: "Login",
+                StartupOption.EXIT: "Exit"
+        }
 
     def start(self):
         while not self.quit:
@@ -59,10 +84,12 @@ class Menu:
         self.auth.write_data()
 
     def print_startup_menu(self):
+        option_list = sorted(self.startup_options)
         print(f"{yellow}version{reset}:{bold}{red} {self.version}\n{reset}")
-        for i, option in enumerate(self.startup_options):
-            print(f"{green}[{yellow}{i+1}{green}]", end="")
-            print(f"{white} {option}{reset}")
+        for option in option_list:
+            option_name = self.startup_options[option]
+            print(f"{green}[{yellow}{option}{green}]", end="")
+            print(f"{white} {option_name}{reset}")
         print()
 
     def startup_menu(self):
@@ -74,13 +101,13 @@ class Menu:
         except:
             print("The option that you gave is invalid please try again!")
             return
-        if option == 1:
+        if option == StartupOption.CREATE_ACCOUNT:
             self.auth.signup()
-        elif option == 2:
+        elif option == StartupOption.LOGIN:
             self.auth.login()
             self.manager.username = self.auth.username
             self.manager.master_password = self.auth.master_password
-        elif option == 3:
+        elif option == StartupOption.EXIT:
             self.quit = True
         else:
             print("The option that you gave is invalid please try again!")
@@ -107,10 +134,16 @@ class Menu:
             if not platforms:
                 break
             self.print_platforms()
-            print("Type back to go back to the main menu...")
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
             if platform_id == "back":
+                self.reset_platform_offset()
                 break
+            elif platform_id == "next":
+                self.next_platform_page(platform_count)
+                continue
+            elif platform_id == "prev":
+                self.prev_platform_page()
+                continue
             try:
                 platform_id = int(platform_id) - 1
             except:
@@ -132,10 +165,12 @@ class Menu:
         print(f"Logged out of the user {self.auth.username}!")
 
     def print_vaultmenu(self):
+        option_list = sorted(self.vault_options)
         print(banner)
         print(f"Welcome, {self.auth.username}!")
-        for i, option in enumerate(self.vault_options):
-            print(f"{green}[{yellow}{i+1}{green}]{white} {option}{reset}")
+        for option in option_list:
+            option_name = self.vault_options[option]
+            print(f"{green}[{yellow}{option}{green}]{white} {option_name}{reset}")
         print()
 
     def vault_menu(self):
@@ -147,26 +182,44 @@ class Menu:
             except:
                 print("The option you entered is invalid please try again...")
                 continue
-            if option == 1:
+            if option == VaultOption.ADD_CREDENTIAL:
                 self.add_credential()
-            elif option == 2:
+            elif option == VaultOption.VIEW_CREDENTIALS:
                 self.view_credentials()
-            elif option == 3:
+            elif option == VaultOption.DELETE_CREDENTIALS:
                 self.delete_credentials()
-            elif option == 4:
+            elif option == VaultOption.SWITCH_ACCOUNT:
                 self.switch_account()
-            elif option == 5:
-                self.remove_account()
-                break
-            elif option == 6:
+            elif option == VaultOption.REMOVE_ACCOUNT:
+                if self.remove_account():
+                    break
+            elif option == VaultOption.CHANGE_USERNAME:
                 self.change_username()
-            elif option == 7:
+            elif option == VaultOption.REMOVE_PLATFORM:
                 self.remove_platform()
-            elif option == 8:
+            elif option == VaultOption.CHANGE_PASSWORD:
                 self.change_master_password()
-            elif option == 9:
+            elif option == VaultOption.ADD_PLATFORM:
+                self.add_platform()
+            elif option == VaultOption.LOGOUT:
                 self.logout()
                 break
+
+    def add_platform(self):
+        platforms = self.manager.get_platforms()
+        while True:
+            platform_name = input("Enter the platform (Ex: Gmail): ")
+            if platform_name in platforms:
+                print("The platform already exists.")
+                print("Please try again...")
+                continue
+            if input("Enter the platform name again: ") == platform_name:
+                break
+        if self.manager.add_platform(platform_name):
+            print(f"{bold}{white}Successfully added the platform {platform_name}!")
+            return True
+        print(f"{bold}{white}Failed to add the platform {platform_name}!")
+        return False
 
     def change_master_password(self):
         password = getpass.getpass("Please confirm your password: ")
@@ -175,13 +228,8 @@ class Menu:
             if new_password == getpass.getpass("Confirm the password: "):
                 break
             print("Please try again...")
-        users = self.auth.auth_info["Users"]
-        kdf_hash = users[self.auth.username]
-        if self.auth.verify_password(kdf_hash, password):
-            self.auth.change_password(password, new_password)
-            self.manager.decrypt_credentials()
-            self.manager.master_password = new_password
-            self.manager.encrypt_credentials()
+        if self.auth.change_password(password, new_password):
+            self.manager.change_password(password, new_password)
             print("Successfully changed the password!")
         else:
             print("The password is incorrect...")
@@ -196,7 +244,6 @@ class Menu:
         else:
             print(f"{bold}{white}Failed to switch into the account...")
             self.auth.relogin()
-
 
     def ask_credential(self):
         print("Please provide your credential details below...")
@@ -231,16 +278,69 @@ class Menu:
         if credential:
             print("Successfully added the credential!")
         return credential
+    
+    def next_platform_page(self, platform_count):
+        global platform_offset
+        platform_end = platform_offset + platform_limit
+        if platform_end < platform_count:
+            platform_offset += platform_limit
+    
+    def prev_platform_page(self):
+        global platform_offset
+        if platform_offset > 0:
+            platform_offset -= platform_limit
+
+    def reset_platform_offset(self):
+        global platform_offset
+        platform_offset = 0
+
+    def next_credential_page(self, credential_count):
+        global credential_offset
+        credential_end = credential_offset + credential_limit
+        if credential_end < credential_count:
+            credential_offset += credential_limit
+
+    def prev_credential_page(self):
+        global credential_offset
+        if credential_offset > 0:
+            credential_offset -= credential_limit
+
+    def reset_credential_offset(self):
+        global credential_offset
+        credential_offset = 0
+
+    def print_shortcuts(self):
+        print(f"{bold}{white}Shortcuts:")
+        print(f"1. Use {red}back{white} to go {red}back{white} to the main menu.")
+        print(f"2. Use {red}next{white} to navigate to the {red}next{white} section.")
+        print(f"3. Use {red}prev{white} to navigate to the {red}previous{white} section.")
+        print()
 
     def print_platforms(self):
-        platforms = self.manager.get_platforms()
-        for option, platform_name in enumerate(platforms):
-            print(f"{bold}{green}[{yellow}{option+1}{green}]{white} {platform_name}{reset}")
+        platforms = list(self.manager.get_platforms())
+        platform_count = len(platforms)
+        platform_end = platform_offset + platform_limit
+        if platform_end > platform_count:
+            platform_end = platform_count
+        paginated_list = platforms[platform_offset:platform_end]
+        print(f"{bold}{white}Displaying {platform_offset+1} to {platform_end} of {platform_count} platforms.")
+        for option, platform_name in enumerate(paginated_list):
+            option = platform_offset + option + 1
+            print(f"{bold}{green}[{yellow}{option}{green}]{white} {platform_name}{reset}") 
+        self.print_shortcuts()
 
     def print_credentials(self, platform_name):
-        platform = self.manager.get_platform(platform_name)
-        for i, username in enumerate(platform):
-            print(f"{bold}{green}[{yellow}{i+1}{green}]{white} {username}{reset}")
+        platform = list(self.manager.get_platform(platform_name))
+        credential_count = len(platform)
+        credential_end = credential_offset + credential_limit
+        if credential_end > credential_count:
+            credential_end = credential_count
+        paginated_list = platform[credential_offset:credential_end]
+        print(f"{bold}{white}Displaying {credential_offset+1} to {credential_end} of {credential_count} credentials.")
+        for i, username in enumerate(paginated_list):
+            i = credential_offset + i + 1
+            print(f"{bold}{green}[{yellow}{i}{green}]{white} {username}{reset}")
+        self.print_shortcuts()
 
     def view_credentials(self):
         platforms = self.manager.get_platforms()
@@ -250,10 +350,16 @@ class Menu:
         platform_count = len(platforms)
         while True:
             self.print_platforms()
-            print("Type back to go back to the main menu...")
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
             if platform_id == "back":
+                self.reset_platform_offset()
                 break
+            elif platform_id == "next":
+                self.next_platform_page(platform_count)
+                continue
+            elif platform_id == "prev":
+                self.prev_platform_page()
+                continue
             try:
                 platform_id = int(platform_id) - 1
             except:
@@ -267,12 +373,19 @@ class Menu:
             platform_name = self.manager.get_platform_name(platform_id)
             credentials = list(self.manager.get_platform(platform_name))
             credential_count = len(credentials)
-            while True:
+            if not credential_count:
+                print("There are no credentials for the selected platform...")
+            while True and credential_count > 0:
                 self.print_credentials(platform_name)
-                print("Type back to go back to selecting a platform option...")
                 credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
                 if credential_id == "back":
+                    self.reset_credential_offset()
                     break
+                elif credential_id == "next":
+                    self.next_credential_page(credential_count)
+                    continue
+                elif credential_id == "prev":
+                    self.prev_credential_page()
                 try:
                     credential_id = int(credential_id) - 1
                 except:
@@ -297,10 +410,17 @@ class Menu:
         platform_count = len(platforms)
         while True:
             self.print_platforms()
-            print("Type back to go back to the main menu")
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
             if platform_id == "back":
+                self.reset_platform_offset()
                 return None
+            elif platform_id == "next":
+                self.next_platform_page(platform_count)
+                continue
+            elif platform_id == "prev":
+                self.prev_platform_page()
+                continue
+
             try:
                 platform_id = int(platform_id) - 1
             except:
@@ -319,10 +439,16 @@ class Menu:
                 if not credential_count:
                     print(f"{red}There is no credentials in the selected platform...")
                     break
-                print("Type back to go back to platform selection")
                 credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
                 if credential_id == "back":
+                    self.reset_credential_offset()
                     break
+                elif credential_id == "next":
+                    self.next_credential_page(credential_count)
+                    continue
+                elif credential_id == "prev":
+                    self.prev_credential_page()
+                    continue
                 try:
                     credential_id = int(credential_id) - 1
                 except:

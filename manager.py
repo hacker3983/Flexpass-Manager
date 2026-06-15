@@ -42,6 +42,14 @@ class Manager:
                 encrypted_data = my_platform[credential_name]
                 my_platform[credential_name] = self.decrypt_credential(encrypted_data)
 
+    def change_password(self, password, new_password):
+        if password == self.master_password:
+            self.decrypt_credentials()
+            self.master_password = new_password
+            self.encrypt_credentials()
+            return True
+        return False
+
     def encrypt_credentials(self):
         platforms = self.get_platforms()
         if not platforms:
@@ -92,6 +100,7 @@ class Manager:
         }
         users = self.get_users()
         users.update(user)
+        self.write_data()
         return user
 
     def add_platform(self, platform_name):
@@ -101,6 +110,7 @@ class Manager:
             return None
         platform = {platform_name:{}}
         platforms.update(platform)
+        self.write_data()
         return platform
  
     def get_platforms(self):
@@ -140,7 +150,7 @@ class Manager:
                 del platforms[platform_name]
                 self.write_data()
                 return True
-        return True
+        return False
 
     def remove_credential(self, platform_name, credential_id):
         user = self.get_user()

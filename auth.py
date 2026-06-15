@@ -61,8 +61,7 @@ class Auth():
     def remove_user(self):
         password = getpass.getpass("Please confirm your password: ")
         users = self.auth_info["Users"]
-        kdf_hash = users[self.username]
-        if self.verify_password(kdf_hash, password):
+        if password == self.master_password:
             users.pop(self.username)
             self.write_data()
             print(f"Successfully deleted the account {self.username}!")
@@ -72,11 +71,12 @@ class Auth():
 
     def change_password(self, password, new_password):
         users = self.auth_info["Users"]
-        kdf_hash = users[self.username]
-        if self.verify_password(kdf_hash, password):
+        if password == self.master_password:
             new_passwordhash = self.hasher.hash(new_password)
             users[self.username] = new_passwordhash
             self.write_data()
+            return True
+        return False
 
     def add_user(self, username, master_password):
         users = self.auth_info["Users"]
@@ -84,6 +84,7 @@ class Auth():
             return False
         kdf_hash = self.hasher.hash(master_password)
         users.update({username: kdf_hash})
+        self.write_data()
         return True
 
     def verify_password(self, kdf_hash, password):
