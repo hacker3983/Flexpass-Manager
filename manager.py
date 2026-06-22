@@ -112,7 +112,30 @@ class Manager:
         platforms.update(platform)
         self.write_data()
         return platform
- 
+    
+    def edit_platform(self, platform_id, new_platform_name):
+        platforms = self.get_platforms()
+        for i, platform_name in enumerate(platforms):
+            if i == platform_id:
+                platforms[new_platform_name] = platforms.pop(platform_name)
+                self.write_data()
+                return True
+        return False
+    
+    def edit_credential(self, platform_name, credential_id, new_credential_name):
+        user = self.get_user()
+        if not user:
+            return False
+        platform = self.get_platform(platform_name)
+        if not platform:
+            return False
+        for i, credential_username in enumerate(platform):
+            if i == credential_id:
+                platform[new_credential_name] = platform.pop(credential_username)
+                self.write_data()
+                return True
+        return False
+
     def get_platforms(self):
         user = self.get_user()
         if not user:
@@ -202,4 +225,4 @@ class Manager:
 
     def write_data(self):
         with open("creds.json", "w") as f:
-            f.write(json.dumps(self.creds_info))
+            json.dump(self.creds_info, f, indent=4)

@@ -2,6 +2,8 @@ from auth import Auth
 from manager import Manager
 from enum import IntEnum
 import getpass
+import platform
+import os
 
 white = "\033[38;2;255;255;255m"
 red = "\033[31m"
@@ -35,7 +37,8 @@ credential_limit = 10
 class StartupOption(IntEnum):
     CREATE_ACCOUNT = 1
     LOGIN = 2,
-    EXIT = 3
+    CLEAR = 3
+    EXIT = 4
 
 class VaultOption(IntEnum):
     ADD_CREDENTIAL = 1
@@ -47,7 +50,10 @@ class VaultOption(IntEnum):
     CHANGE_USERNAME = 7
     REMOVE_PLATFORM = 8
     CHANGE_PASSWORD = 9
-    LOGOUT = 10
+    CLEAR = 10
+    EDIT_PLATFORM = 11
+    EDIT_CREDENTIAL = 12
+    LOGOUT = 13
 
 class Menu:
     def __init__(self):
@@ -65,14 +71,24 @@ class Menu:
                 VaultOption.REMOVE_PLATFORM: "Remove platform",
                 VaultOption.CHANGE_PASSWORD: "Change master password",
                 VaultOption.LOGOUT: "Logout",
-                VaultOption.ADD_PLATFORM: "Add platform"
+                VaultOption.ADD_PLATFORM: "Add platform",
+                VaultOption.CLEAR: "Clear the screen",
+                VaultOption.EDIT_PLATFORM: "Edit the name of a platform",
+                VaultOption.EDIT_CREDENTIAL: "Edit the name of a credential"
         }
 
         self.startup_options = {
                 StartupOption.CREATE_ACCOUNT: "Create Account",
                 StartupOption.LOGIN: "Login",
-                StartupOption.EXIT: "Exit"
+                StartupOption.EXIT: "Exit",
+                StartupOption.CLEAR: "Clear the screen"
         }
+
+    def clear_screen(self):
+        if platform.system() == "Windows":
+            os.system("cls")
+        else:
+            os.system("clear")
 
     def start(self):
         while not self.quit:
@@ -107,6 +123,8 @@ class Menu:
             self.auth.login()
             self.manager.username = self.auth.username
             self.manager.master_password = self.auth.master_password
+        elif option == StartupOption.CLEAR:
+            self.clear_screen()
         elif option == StartupOption.EXIT:
             self.quit = True
         else:
@@ -124,6 +142,139 @@ class Menu:
             self.logout()
         return success
 
+    def edit_platforms(self):
+        platforms = self.manager.get_platforms()
+        if not platforms:
+            print("There is no platforms the current user...")
+            return
+        platform_count = len(platforms)
+        while True:
+            self.print_platforms()
+            platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
+            if platform_id == "home":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "clear":
+                self.clear_screen()
+                continue
+            elif platform_id == "back":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "next":
+                self.next_platform_page(platform_count)
+                continue
+            elif platform_id == "prev":
+                self.prev_platform_page()
+                continue
+            try:
+                platform_id = int(platform_id) - 1
+            except:
+                print("The platform id provided is invalid...")
+                print("Please try again...")
+                continue
+            if platform_id >= platform_count or platform_id < 0:
+                print("The platform id provided is invalid...")
+                print("Please try again..")
+                continue
+            new_platform_name = input("Enter the new name of the platform: ")
+            if new_platform_name != input("Confrim the name of the platform: "):
+                print("The platform name doesn't match please try again...")
+                continue
+
+            if self.manager.edit_platform(platform_id, new_platform_name):
+                print("Succesfully edited the platform name!")
+            else:
+                print("The platform id you gave is invalid.")
+                print("Please try again...")
+
+    def edit_credentials(self):
+        platforms = self.manager.get_platforms()
+        if not platforms:
+            print("There is no credential for the current user...")
+            return None
+        platform_count = len(platforms)
+        while True:
+            self.print_platforms()
+            platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
+            if platform_id == "home":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "clear":
+                self.clear_screen()
+                continue
+            elif platform_id == "back":
+                self.reset_platform_offset()
+                return None
+            elif platform_id == "next":
+                self.next_platform_page(platform_count)
+                continue
+            elif platform_id == "prev":
+                self.prev_platform_page()
+                continue
+
+            try:
+                platform_id = int(platform_id) - 1
+            except:
+                print("The platform id entered is invalid...")
+                print("Please try again...")
+                continue
+            if platform_id >= platform_count or platform_id < 0:
+                print("The platform id is invalid...")
+                print("Please try again...")
+                continue
+            platform_name = self.manager.get_platform_name(platform_id)
+            credentials = list(self.manager.get_platform(platform_name))
+            credential_count = len(credentials)
+            while True:
+                self.print_credentials(platform_name)
+                if not credential_count:
+                    print(f"{red}There is no credentials in the selected platform...")
+                    break
+                credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
+                if credential_id == "home":
+                    self.reset_all_offsets()
+                    return
+                elif credential_id == "clear":
+                    self.clear_screen()
+                    continue
+                elif credential_id == "back":
+                    self.reset_credential_offset()
+                    break
+                elif credential_id == "next":
+                    self.next_credential_page(credential_count)
+                    continue
+                elif credential_id == "prev":
+                    self.prev_credential_page()
+                    continue
+                try:
+                    credential_id = int(credential_id) - 1
+                except:
+                    print("The credential id is invalid...")
+                    print("Please try again...")
+                    continue
+                if credential_id >= credential_count or credential_id < 0:
+                    print("The credential id is invalid...")
+                    print("Please try again...")
+                    continue
+
+
+                new_credential_name = input("Enter the new credential name: ")
+                if new_credential_name != input("Confirm the credential name: "):
+                    print("The credential name doesn't match!")
+                    print("Please try again...")
+                    continue
+                credential_username = credentials[credential_id]
+                edited = self.manager.edit_credential(platform_name, credential_id, new_credential_name)
+                if not edited:
+                    print("Failed to edit the credential...")
+                    continue
+                print("Successfully edited the credential!")
+                print(f"Edited: {credential_username}")
+                credentials = self.manager.get_platform(platform_name)
+                if len(credentials) == 0:
+                    break
+
+
     def remove_platform(self):
         platforms = self.manager.get_platforms()
         if not platforms:
@@ -135,7 +286,13 @@ class Menu:
                 break
             self.print_platforms()
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
-            if platform_id == "back":
+            if platform_id == "home":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "clear":
+                self.clear_screen()
+                continue
+            elif platform_id == "back":
                 self.reset_platform_offset()
                 break
             elif platform_id == "next":
@@ -161,6 +318,7 @@ class Menu:
                 print("Please try again...")
 
     def logout(self):
+        self.manager.write_data()
         self.auth.logged_in = False
         print(f"Logged out of the user {self.auth.username}!")
 
@@ -201,6 +359,12 @@ class Menu:
                 self.change_master_password()
             elif option == VaultOption.ADD_PLATFORM:
                 self.add_platform()
+            elif option == VaultOption.CLEAR:
+                self.clear_screen()
+            elif option == VaultOption.EDIT_PLATFORM:
+                self.edit_platforms()
+            elif option == VaultOption.EDIT_CREDENTIAL:
+                self.edit_credentials()
             elif option == VaultOption.LOGOUT:
                 self.logout()
                 break
@@ -309,11 +473,17 @@ class Menu:
         global credential_offset
         credential_offset = 0
 
+    def reset_all_offsets(self):
+        self.reset_platform_offset()
+        self.reset_credential_offset()
+
     def print_shortcuts(self):
         print(f"{bold}{white}Shortcuts:")
         print(f"1. Use {red}back{white} to go {red}back{white} to the main menu.")
         print(f"2. Use {red}next{white} to navigate to the {red}next{white} section.")
         print(f"3. Use {red}prev{white} to navigate to the {red}previous{white} section.")
+        print(f"4. Use {red}home{white} to go back to the main menu.")
+        print(f"5. Use {red}clear{white} to clear the screen.")
         print()
 
     def print_platforms(self):
@@ -351,7 +521,13 @@ class Menu:
         while True:
             self.print_platforms()
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
-            if platform_id == "back":
+            if platform_id == "home":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "clear":
+                self.clear_screen()
+                continue
+            elif platform_id == "back":
                 self.reset_platform_offset()
                 break
             elif platform_id == "next":
@@ -378,7 +554,13 @@ class Menu:
             while True and credential_count > 0:
                 self.print_credentials(platform_name)
                 credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
-                if credential_id == "back":
+                if credential_id == "home":
+                    self.reset_all_offsets()
+                    return platforms
+                elif credential_id == "clear":
+                    self.clear_screen()
+                    continue
+                elif credential_id == "back":
                     self.reset_credential_offset()
                     break
                 elif credential_id == "next":
@@ -386,6 +568,7 @@ class Menu:
                     continue
                 elif credential_id == "prev":
                     self.prev_credential_page()
+                    continue
                 try:
                     credential_id = int(credential_id) - 1
                 except:
@@ -411,7 +594,13 @@ class Menu:
         while True:
             self.print_platforms()
             platform_id = input(f"{white}Select a platform ({bold}{red}1-{platform_count}{white}): ")
-            if platform_id == "back":
+            if platform_id == "home":
+                self.reset_platform_offset()
+                break
+            elif platform_id == "clear":
+                self.clear_screen()
+                continue
+            elif platform_id == "back":
                 self.reset_platform_offset()
                 return None
             elif platform_id == "next":
@@ -440,7 +629,13 @@ class Menu:
                     print(f"{red}There is no credentials in the selected platform...")
                     break
                 credential_id = input(f"{white}Select a credential ({bold}{red}1-{credential_count}{white}): ")
-                if credential_id == "back":
+                if credential_id == "home":
+                    self.reset_all_offsets()
+                    return
+                elif credential_id == "clear":
+                    self.clear_screen()
+                    continue
+                elif credential_id == "back":
                     self.reset_credential_offset()
                     break
                 elif credential_id == "next":

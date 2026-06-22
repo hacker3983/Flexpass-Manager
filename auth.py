@@ -130,16 +130,5 @@ class Auth():
 
     def write_data(self):
         with open("auth.json", "w") as f:
-            users = self.auth_info["Users"]
-            user_count = len(users)
-            f.write("{\n")
-            f.write('\t"Users":{\n')
-            for index, user in enumerate(users):
-                username = user
-                encoded_username = json.encoder.encode_basestring(username)
-                kdf_hash = users[username]
-                f.write(f'\t\t{encoded_username}: "{kdf_hash}"')
-                if index != user_count-1:
-                    f.write(",\n")
-            f.write('\n\t}\n')
-            f.write("}")
+            users = self.auth_info
+            json.dump(users, f, indent=4)
